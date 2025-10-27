@@ -4,10 +4,25 @@ import time
 import re
 from pathlib import Path
 import random
+import json
 
 def sanitize_filename(filename):
     """Remove invalid characters from filename"""
     return re.sub(r'[<>:"/\\|?*]', '', filename)[:200]
+
+def clean_text(text):
+    """
+    Clean text by removing unwanted characters and formatting
+    """
+    # Replace newlines with spaces
+    text = text.replace('\n', ' ')
+    # Remove backslashes
+    text = text.replace('\\', '')
+    # Replace multiple spaces with single space
+    text = re.sub(r'\s+', ' ', text)
+    # Strip leading/trailing whitespace
+    text = text.strip()
+    return text
 
 def get_english_transcript(api, video_id):
     """Try to get English transcript (US or UK)"""
@@ -21,14 +36,71 @@ def get_english_transcript(api, video_id):
     # If no English found, raise error
     raise Exception("No English transcript available")
 
+def create_chunks(transcript_list, target_minutes=3):
+    """
+    Split transcript into chunks based on time duration (~3 minutes per chunk).
+    
+    Args:
+        transcript_list: List of transcript entries with 'text', 'start', 'duration'
+        target_minutes: Target duration per chunk in minutes (default: 3)
+    
+    Returns:
+        List of chunks with chunk_id, text, start_time, end_time
+    """
+    chunks = []
+    current_chunk = {
+        "chunk_id": 1,
+        "text": "",
+        "start_time": None,
+        "end_time": None
+    }
+    
+    for entry in transcript_list:
+        # Set start time for first entry in chunk (convert to minutes)
+        if current_chunk["start_time"] is None:
+            current_chunk["start_time"] = round(entry.start / 60, 2)
+        
+        # Clean the text thoroughly
+        cleaned_text = clean_text(entry.text)
+        
+        # Add text with space
+        if current_chunk["text"]:
+            current_chunk["text"] += " " + cleaned_text
+        else:
+            current_chunk["text"] = cleaned_text
+        
+        # Update end time (convert to minutes)
+        current_chunk["end_time"] = round((entry.start + entry.duration) / 60, 2)
+        
+        # Calculate duration of current chunk in minutes
+        chunk_duration = current_chunk["end_time"] - current_chunk["start_time"]
+        
+        # Check if chunk has reached target duration (~3 minutes)
+        if chunk_duration >= target_minutes:
+            chunks.append(current_chunk.copy())
+            
+            # Start new chunk
+            current_chunk = {
+                "chunk_id": len(chunks) + 1,
+                "text": "",
+                "start_time": None,
+                "end_time": None
+            }
+    
+    # Add remaining text as final chunk
+    if current_chunk["text"]:
+        chunks.append(current_chunk)
+    
+    return chunks
+
 def main():
-    playlist_url = "https://www.youtube.com/playlist?list=PL8828Z-IEhFGkz7F_paNquqsFyd357oYA"
+    playlist_url = "https://www.youtube.com/playlist?list=PL8828Z-IEhFFejp6N8hTc3Gdub3R9_7Pv"
     
     print("📥 Fetching playlist...")
     playlist = Playlist(playlist_url)
     
     # Create output directory
-    output_dir = Path("transcripts")
+    output_dir = Path("transcripts_json")
     output_dir.mkdir(exist_ok=True)
     
     # Get video URLs first
@@ -36,6 +108,7 @@ def main():
     total_videos = len(video_urls)
     print(f"📋 Found {total_videos} videos in playlist\n")
     print("🔍 Fetching ENGLISH transcripts only\n")
+    print("📦 Creating chunked JSON outputs (~3 minutes per chunk)\n")
     
     # Create API instance
     api = YouTubeTranscriptApi()
@@ -55,7 +128,6 @@ def main():
             
             # Get ENGLISH transcript only
             transcript_list = get_english_transcript(api, video_id)
-            text = " ".join([entry.text for entry in transcript_list])
             
             # Try to get title (optional)
             video_title = "Unknown_Title"
@@ -68,21 +140,35 @@ def main():
             except:
                 pass
             
-            # Save file
-            filename = f"{idx:02d}_{video_title}_{video_id}.txt"
+            # Create chunks (~3 minutes each)
+            chunks = create_chunks(transcript_list, target_minutes=3)
+            
+            # Create full text with additional cleaning
+            full_text = " ".join([chunk["text"] for chunk in chunks])
+            full_text = clean_text(full_text)
+            
+            # Build JSON structure
+            duration_minutes = round(duration / 60, 2) if isinstance(duration, (int, float)) else "Unknown"
+            output_data = {
+                "video_id": video_id,
+                "video_url": video_url,
+                "video_title": video_title,
+                "duration_minutes": duration_minutes,
+                "total_chunks": len(chunks),
+                "language": "English",
+                "chunks": chunks,
+                "full_text": full_text
+            }
+            
+            # Save JSON file with ensure_ascii=False to handle special characters
+            filename = f"{idx:02d}_{video_title}_{video_id}.json"
             filepath = output_dir / filename
             
             with open(filepath, "w", encoding="utf-8") as f:
-                f.write(f"Video ID: {video_id}\n")
-                f.write(f"URL: {video_url}\n")
-                f.write(f"Title: {video_title}\n")
-                f.write(f"Duration: {duration}s\n")
-                f.write(f"Transcript entries: {len(transcript_list)}\n")
-                f.write(f"Language: English\n")
-                f.write("-" * 80 + "\n\n")
-                f.write(text)
+                json.dump(output_data, f, indent=2, ensure_ascii=False)
             
-            print(f"✅ Saved ({len(transcript_list)} entries) - English ✓\n")
+            print(f"✅ Saved {len(chunks)} chunks ({len(transcript_list)} entries) - English ✓")
+            print(f"   📄 {filename}\n")
             success_count += 1
             
             # Longer delays to avoid IP ban (3-5 seconds)
@@ -108,19 +194,28 @@ def main():
                 # Retry once
                 try:
                     transcript_list = get_english_transcript(api, video_id)
-                    text = " ".join([entry.text for entry in transcript_list])
+                    chunks = create_chunks(transcript_list, target_minutes=3)
+                    full_text = " ".join([chunk["text"] for chunk in chunks])
+                    full_text = clean_text(full_text)
                     
-                    filename = f"{idx:02d}_Unknown_Title_{video_id}.txt"
+                    output_data = {
+                        "video_id": video_id,
+                        "video_url": video_url,
+                        "video_title": "Unknown_Title",
+                        "duration_minutes": "Unknown",
+                        "total_chunks": len(chunks),
+                        "language": "English",
+                        "chunks": chunks,
+                        "full_text": full_text
+                    }
+                    
+                    filename = f"{idx:02d}_Unknown_Title_{video_id}.json"
                     filepath = output_dir / filename
                     
                     with open(filepath, "w", encoding="utf-8") as f:
-                        f.write(f"Video ID: {video_id}\n")
-                        f.write(f"URL: {video_url}\n")
-                        f.write(f"Language: English\n")
-                        f.write("-" * 80 + "\n\n")
-                        f.write(text)
+                        json.dump(output_data, f, indent=2, ensure_ascii=False)
                     
-                    print(f"✅ Retry successful!\n")
+                    print(f"✅ Retry successful! Saved {len(chunks)} chunks\n")
                     success_count += 1
                     time.sleep(5)
                     continue
@@ -164,8 +259,9 @@ def main():
                 f.write(video + "\n")
         print(f"\n💾 Failed IDs saved to: failed_videos.txt")
     
-    print(f"\n📁 All English transcripts saved in: {output_dir.absolute()}")
-    print(f"🎯 Total English transcripts: {success_count}")
+    print(f"\n📁 All JSON transcripts saved in: {output_dir.absolute()}")
+    print(f"🎯 Total JSON files created: {success_count}")
+    print(f"📦 Each file contains chunked transcript data with timestamps")
 
 if __name__ == "__main__":
     main()
