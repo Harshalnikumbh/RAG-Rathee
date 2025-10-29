@@ -5,7 +5,7 @@ import numpy as np
 import joblib
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
+# from sklearn.metrics.pairwise import cosine_similarity
 
 def create_embeddings(text_list, model):
     """Create embeddings for a list of texts."""
