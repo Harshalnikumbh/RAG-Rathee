@@ -36,60 +36,79 @@ def get_english_transcript(api, video_id):
     # If no English found, raise error
     raise Exception("No English transcript available")
 
-def create_chunks(transcript_list, target_minutes=3):
+def create_chunks(transcript_list, chunk_duration_seconds=30, overlap_seconds=5):
     """
-    Split transcript into chunks based on time duration (~3 minutes per chunk).
+    Split transcript into chunks with overlap to maintain context.
     
     Args:
         transcript_list: List of transcript entries with 'text', 'start', 'duration'
-        target_minutes: Target duration per chunk in minutes (default: 3)
+        chunk_duration_seconds: Target duration per chunk in seconds (default: 30)
+        overlap_seconds: Overlap duration in seconds (default: 5)
     
     Returns:
         List of chunks with chunk_id, text, start_time, end_time
     """
+    if not transcript_list:
+        return []
+    
     chunks = []
-    current_chunk = {
-        "chunk_id": 1,
-        "text": "",
-        "start_time": None,
-        "end_time": None
-    }
+    chunk_id = 1
+    i = 0
     
-    for entry in transcript_list:
-        # Set start time for first entry in chunk (convert to minutes)
-        if current_chunk["start_time"] is None:
-            current_chunk["start_time"] = round(entry.start / 60, 2)
+    while i < len(transcript_list):
+        chunk_start_time = transcript_list[i].start
+        chunk_text = ""
+        chunk_entries = []
         
-        # Clean the text thoroughly
-        cleaned_text = clean_text(entry.text)
-        
-        # Add text with space
-        if current_chunk["text"]:
-            current_chunk["text"] += " " + cleaned_text
-        else:
-            current_chunk["text"] = cleaned_text
-        
-        # Update end time (convert to minutes)
-        current_chunk["end_time"] = round((entry.start + entry.duration) / 60, 2)
-        
-        # Calculate duration of current chunk in minutes
-        chunk_duration = current_chunk["end_time"] - current_chunk["start_time"]
-        
-        # Check if chunk has reached target duration (~3 minutes)
-        if chunk_duration >= target_minutes:
-            chunks.append(current_chunk.copy())
+        # Collect entries for this chunk
+        j = i
+        while j < len(transcript_list):
+            entry = transcript_list[j]
+            entry_end = entry.start + entry.duration
             
-            # Start new chunk
-            current_chunk = {
-                "chunk_id": len(chunks) + 1,
-                "text": "",
-                "start_time": None,
-                "end_time": None
-            }
-    
-    # Add remaining text as final chunk
-    if current_chunk["text"]:
-        chunks.append(current_chunk)
+            # Add entry if it's within chunk duration
+            if entry.start - chunk_start_time < chunk_duration_seconds:
+                cleaned_text = clean_text(entry.text)
+                if chunk_text:
+                    chunk_text += " " + cleaned_text
+                else:
+                    chunk_text = cleaned_text
+                chunk_entries.append(entry)
+                j += 1
+            else:
+                break
+        
+        # Create chunk if we have text
+        if chunk_text:
+            chunk_end_time = chunk_entries[-1].start + chunk_entries[-1].duration
+            
+            chunks.append({
+                "chunk_id": chunk_id,
+                "text": chunk_text,
+                "start_time": round(chunk_start_time / 60, 2),  # Convert to minutes
+                "end_time": round(chunk_end_time / 60, 2)  # Convert to minutes
+            })
+            chunk_id += 1
+        
+        # Move to next chunk with overlap
+        # Find the entry that starts at (chunk_start_time + chunk_duration - overlap)
+        overlap_start_time = chunk_start_time + chunk_duration_seconds - overlap_seconds
+        
+        # Find next starting position with overlap
+        next_i = i
+        for k in range(i, len(transcript_list)):
+            if transcript_list[k].start >= overlap_start_time:
+                next_i = k
+                break
+        else:
+            # If no entry found, move to the end
+            next_i = len(transcript_list)
+        
+        # Ensure we're making progress
+        if next_i <= i:
+            next_i = i + 1
+        
+        i = next_i
     
     return chunks
 
@@ -108,7 +127,7 @@ def main():
     total_videos = len(video_urls)
     print(f"📋 Found {total_videos} videos in playlist\n")
     print("🔍 Fetching ENGLISH transcripts only\n")
-    print("📦 Creating chunked JSON outputs (~3 minutes per chunk)\n")
+    print("📦 Creating chunked JSON outputs (30-second chunks with 5-second overlap)\n")
     
     # Create API instance
     api = YouTubeTranscriptApi()
@@ -140,8 +159,8 @@ def main():
             except:
                 pass
             
-            # Create chunks (~3 minutes each)
-            chunks = create_chunks(transcript_list, target_minutes=3)
+            # Create chunks (30 seconds with 5-second overlap)
+            chunks = create_chunks(transcript_list, chunk_duration_seconds=30, overlap_seconds=5)
             
             # Create full text with additional cleaning
             full_text = " ".join([chunk["text"] for chunk in chunks])
@@ -155,6 +174,8 @@ def main():
                 "video_title": video_title,
                 "duration_minutes": duration_minutes,
                 "total_chunks": len(chunks),
+                "chunk_duration_seconds": 30,
+                "overlap_seconds": 5,
                 "language": "English",
                 "chunks": chunks,
                 "full_text": full_text
@@ -194,7 +215,7 @@ def main():
                 # Retry once
                 try:
                     transcript_list = get_english_transcript(api, video_id)
-                    chunks = create_chunks(transcript_list, target_minutes=3)
+                    chunks = create_chunks(transcript_list, chunk_duration_seconds=30, overlap_seconds=5)
                     full_text = " ".join([chunk["text"] for chunk in chunks])
                     full_text = clean_text(full_text)
                     
@@ -204,6 +225,8 @@ def main():
                         "video_title": "Unknown_Title",
                         "duration_minutes": "Unknown",
                         "total_chunks": len(chunks),
+                        "chunk_duration_seconds": 30,
+                        "overlap_seconds": 5,
                         "language": "English",
                         "chunks": chunks,
                         "full_text": full_text
@@ -261,7 +284,8 @@ def main():
     
     print(f"\n📁 All JSON transcripts saved in: {output_dir.absolute()}")
     print(f"🎯 Total JSON files created: {success_count}")
-    print(f"📦 Each file contains chunked transcript data with timestamps")
+    print(f"📦 Each file contains chunked transcript data with 5-second overlap for context")
 
 if __name__ == "__main__":
     main()
+    
