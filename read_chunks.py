@@ -23,7 +23,6 @@ if __name__ == "__main__":
 
     chunks = []
 
-# Process only first file (with break)
     for json_file in jsons:
         with open(f"transcripts_json/{json_file}",encoding='utf-8') as f:
             content = json.load(f)
@@ -34,12 +33,13 @@ if __name__ == "__main__":
         
         for i, chunk in enumerate(content['chunks']):
             chunk['video_id'] = content['video_id']
+            chunk['video_title'] = content['video_title']
             chunk['video_url'] = content['video_url']
             chunk['duration_minutes'] = content['duration_minutes']
             chunk['embedding'] = embeddings[i].tolist()
             chunks.append(chunk)
-        
     df = pd.DataFrame.from_records(chunks)
+    print(df)
     # save this df 
     joblib.dump(df, 'embeddings.joblib')
 
