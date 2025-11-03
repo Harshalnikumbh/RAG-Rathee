@@ -21,9 +21,9 @@ if not api_key:
 client = groq.Groq(api_key=api_key)
 
 # Load embeddings once at startup
-print("Loading embeddings...")
+# print("Loading embeddings...")
 df = joblib.load('embeddings.joblib')
-print(f" Loaded {len(df)} chunks from {df['video_title'].nunique()} videos\n")
+# print(f" Loaded {len(df)} chunks from {df['video_title'].nunique()} videos\n")
 
 # CORE FUNCTIONS
 
@@ -58,6 +58,49 @@ def query_groq(question, context):
                         - Provide a clear, accurate, and source-backed answer.
                         - Each answer must begin with the video details (title and URL).
                         - Cite timestamps precisely within the explanation.
+
+                    CRITICAL FORMATTING RULES:
+                        - Use HTML formatting ONLY: <strong>, <p>, <ul>, <li>, <a>
+                        - NO markdown asterisks (*) or underscores (_)
+                        - Make ALL URLs clickable with: <a href="URL" target="_blank">URL</a>
+                    
+                    Response Structure:
+                    1. Start with video info:
+                       <strong>Video Title:</strong> <title>
+                       <strong>Video URL:</strong> <a href="url" target="_blank">url</a>
+                    
+                    2. Add intro paragraph:
+                       <p>Brief summary of what the video explains...</p>
+                    
+                    3. Main explanation with bullet points:
+                       <strong>Main Explanation:</strong>
+                       <ul>
+                       <li>Point 1 with details [start – end min]</li>
+                       <li>Point 2 with details [start – end min]</li>
+                       </ul>
+                    
+                    4. Conclusion:
+                       <strong>Conclusion:</strong>
+                       <p>Summary takeaway [start – end min]</p>
+                    
+                    Rules:
+                    - Use ONLY provided video transcripts
+                    - Cite timestamps as [start – end min] WITHOUT repeating video title/URL
+                    - If question can't be answered: "I can only answer questions based on the provided video content."
+                    - Be specific and detailed
+                    
+                    Example format:
+                    **Video Title:** How Companies Fool You! | Jaago Grahak Jaago  
+                    **Video URL:** https://www.youtube.com/watch?v=DskRAuw8vxk  
+
+                    **Answer:**  
+                    Companies use several deceptive pricing methods to fool customers.  
+                    - **Drip Pricing:** Customers see a low price initially, but hidden charges are added later *(How Companies Fool You!, [18.56 – 19.52 min])*.  
+                    - **Bait and Switch:** Attractive deals lure customers, then they're offered higher-margin alternatives *(How Companies Fool You!, [19.44 – 20.38 min])*.  
+                    - **Razor & Blade Model:** The main product is cheap, but refills or parts are expensive *(How Companies Fool You!, [11.10 – 11.62 min])*.  
+
+                    **Conclusion:**  
+                    The video highlights that these tactics are used systematically, and consumers must stay alert *(How Companies Fool You!, [21.21 – 21.74 min])*.
                         
                     Rules:
                     1. Use only information from the provided video transcripts. Do NOT add outside knowledge.
@@ -87,7 +130,7 @@ def query_groq(question, context):
                     - **Razor & Blade Model:** The main product is cheap, but refills or parts are expensive *(How Companies Fool You!, [11.10 – 11.62 min])*.  
 
                     **Conclusion:**  
-                    The video highlights that these tactics are used systematically, and consumers must stay alert *(How Companies Fool You!, [21.21 – 21.74 min])*.                                                 
+                    The video highlights that these tactics are used systematically, and consumers must stay alert *(How Companies Fool You!, [21.21 – 21.74 min])*.                                                    
                                                                                 """
                 },
                 {
@@ -254,11 +297,11 @@ def run_cli():
                 continue
             
             # Display answer
-            print("\n" + "="*80)
-            print("💡 ANSWER:")
-            print("="*80)
-            print(answer)
-            print("="*80)
+            # print("\n" + "="*80)
+            # print("💡 ANSWER:")
+            # print("="*80)
+            # print(answer)
+            # print("="*80)
             
             # Optionally save debug info
             save = input("\n💾 Save prompt to file? (y/n): ").strip().lower()
@@ -272,9 +315,6 @@ Context:
 Answer:
 {answer}
 """
-                with open('prompt.txt', 'w', encoding='utf-8') as f:
-                    f.write(debug_prompt)
-                print("✅ Saved to 'prompt.txt'")
                 
         except KeyboardInterrupt:
             print("\n\n👋 Goodbye!")
