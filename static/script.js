@@ -126,34 +126,44 @@ function addMessage(text, role, sources = null) {
 
     const messageText = document.createElement('div');
     messageText.className = 'message-text';
-    messageText.textContent = text;
+    
+    // ✅ FIXED: Proper if/else without duplicate
+    if (role === 'assistant') {
+        messageText.innerHTML = text;  // Renders HTML for assistant
+    } else {
+        messageText.textContent = text;  // Plain text for user (security)
+    }
 
     content.appendChild(messageText);
 
-    // Add citations if available
-    if (sources && sources.length > 0) {
-        const citationsDiv = document.createElement('div');
-        citationsDiv.className = 'citations';
+    // // Add citations if available
+    // if (sources && sources.length > 0) {
+    //     const citationsDiv = document.createElement('div');
+    //     citationsDiv.className = 'citations';
         
-        sources.forEach(source => {
-            const citationItem = document.createElement('div');
-            citationItem.className = 'citation-item';
+    //     sources.forEach(source => {
+    //         const citationItem = document.createElement('div');
+    //         citationItem.className = 'citation-item';
             
-            const citationTitle = document.createElement('div');
-            citationTitle.className = 'citation-title';
-            citationTitle.textContent = `📹 ${source.video_title}`;
+    //         // ✅ Make video title clickable
+    //         const citationTitle = document.createElement('div');
+    //         citationTitle.className = 'citation-title';
+    //         citationTitle.innerHTML = `📹 <a href="${source.video_url}" target="_blank" class="citation-link">${source.video_title}</a>`;
             
-            const citationTime = document.createElement('div');
-            citationTime.className = 'citation-time';
-            citationTime.textContent = `⏱️ ${source.start_time} - ${source.end_time} min`;
+    //         // ✅ Make timestamp clickable with URL + time
+    //         const citationTime = document.createElement('div');
+    //         citationTime.className = 'citation-time';
+    //         const startSeconds = Math.floor(source.start_time * 60);
+    //         const videoWithTime = `${source.video_url}${source.video_url.includes('?') ? '&' : '?'}t=${startSeconds}s`;
+    //         citationTime.innerHTML = `⏱️ <a href="${videoWithTime}" target="_blank" class="timestamp-link">${source.start_time.toFixed(2)} - ${source.end_time.toFixed(2)} min</a>`;
             
-            citationItem.appendChild(citationTitle);
-            citationItem.appendChild(citationTime);
-            citationsDiv.appendChild(citationItem);
-        });
+    //         citationItem.appendChild(citationTitle);
+    //         citationItem.appendChild(citationTime);
+    //         citationsDiv.appendChild(citationItem);
+    //     });
         
-        content.appendChild(citationsDiv);
-    }
+    //     content.appendChild(citationsDiv);
+    // }
 
     messageDiv.appendChild(avatar);
     messageDiv.appendChild(content);
