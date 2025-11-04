@@ -26,7 +26,7 @@ body {
     background: var(--bg-primary);
     color: var(--text-primary);
     line-height: 1.6;
-    overflow-y: auto;
+    overflow: hidden;
 }
 
 /* Scrollbar */
@@ -53,6 +53,7 @@ body {
     display: flex;
     min-height: 100vh;
     width: 100vw;
+    overflow: hidden;
 }
 
 /* Sidebar */
@@ -63,6 +64,8 @@ body {
     display: flex;
     flex-direction: column;
     padding: 12px;
+    height: 100vh;
+    overflow: hidden;
 }
 
 .sidebar-header {
@@ -140,6 +143,8 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
 }
 
 .chat-container {
@@ -149,6 +154,8 @@ body {
     max-width: 800px;
     margin: 0 auto;
     width: 100%;
+    height: 100%;
+    overflow: hidden;
 }
 
 .message-text p {
