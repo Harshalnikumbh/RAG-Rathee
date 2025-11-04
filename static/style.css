@@ -359,6 +359,48 @@ body {
     border-bottom: 1px solid var(--border-color);
 }
 
+/* Add these styles to your existing CSS */
+
+/* Clickable links in citations */
+.citation-link,
+.timestamp-link {
+    color: var(--accent-primary);
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.citation-link:hover,
+.timestamp-link:hover {
+    color: var(--accent-hover);
+    text-decoration: underline;
+}
+
+/* Make timestamp look more clickable */
+.timestamp-link {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--accent-light);
+}
+
+.timestamp-link:hover {
+    background: var(--accent-primary);
+    color: white;
+    text-decoration: none;
+}
+
+/* Links in message content */
+.message-text a {
+    color: var(--accent-primary);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+}
+
+.message-text a:hover {
+    border-bottom-color: var(--accent-primary);
+}
+
 .citation-item:last-child {
     border-bottom: none;
 }
