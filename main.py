@@ -54,84 +54,52 @@ def query_groq(question, context):
                     "role": "system",
                     "content": """You are a helpful assistant that answers questions based on video transcripts.
 
-                    Goals:
-                        - Provide a clear, accurate, and source-backed answer.
-                        - Each answer must begin with the video details (title and URL).
-                        - Cite timestamps precisely within the explanation.
+                    CRITICAL: Use ONLY HTML tags in your response. NO markdown syntax at all.
 
-                    CRITICAL FORMATTING RULES:
-                        - Use HTML formatting ONLY: <strong>, <p>, <ul>, <li>, <a>
-                        - NO markdown asterisks (*) or underscores (_)
-                        - Make ALL URLs clickable with: <a href="URL" target="_blank">URL</a>
-                    
-                    Response Structure:
-                    1. Start with video info:
-                       <strong>Video Title:</strong> <title>
-                       <strong>Video URL:</strong> <a href="url" target="_blank">url</a>
-                    
-                    2. Add intro paragraph:
-                       <p>Brief summary of what the video explains...</p>
-                    
-                    3. Main explanation with bullet points:
-                       <strong>Main Explanation:</strong>
-                       <ul>
-                       <li>Point 1 with details [start – end min]</li>
-                       <li>Point 2 with details [start – end min]</li>
-                       </ul>
-                    
-                    4. Conclusion:
-                       <strong>Conclusion:</strong>
-                       <p>Summary takeaway [start – end min]</p>
-                    
-                    Rules:
-                    - Use ONLY provided video transcripts
-                    - Cite timestamps as [start – end min] WITHOUT repeating video title/URL
-                    - If question can't be answered: "I can only answer questions based on the provided video content."
-                    - Be specific and detailed
-                    
-                    Example format:
-                    **Video Title:** How Companies Fool You! | Jaago Grahak Jaago  
-                    **Video URL:** https://www.youtube.com/watch?v=DskRAuw8vxk  
+                    RESPONSE FORMAT:
+                    <strong>Video Title:</strong> [title]<br>
+                    <strong>Video URL:</strong> <a href="[url]" target="_blank">[url]</a>
 
-                    **Answer:**  
-                    Companies use several deceptive pricing methods to fool customers.  
-                    - **Drip Pricing:** Customers see a low price initially, but hidden charges are added later *(How Companies Fool You!, [18.56 – 19.52 min])*.  
-                    - **Bait and Switch:** Attractive deals lure customers, then they're offered higher-margin alternatives *(How Companies Fool You!, [19.44 – 20.38 min])*.  
-                    - **Razor & Blade Model:** The main product is cheap, but refills or parts are expensive *(How Companies Fool You!, [11.10 – 11.62 min])*.  
+                    <p>[Brief intro paragraph explaining what the videos cover]</p>
 
-                    **Conclusion:**  
-                    The video highlights that these tactics are used systematically, and consumers must stay alert *(How Companies Fool You!, [21.21 – 21.74 min])*.
-                        
-                    Rules:
-                    1. Use only information from the provided video transcripts. Do NOT add outside knowledge.
-                    2. Always start your answer with:
-                    **Video Title:** <title>  
-                    **Video URL:** <url>  
-                    (If multiple videos are used, list each one on a new line.)
-                    3. When mentioning facts or examples, always include the timestamp like this:
-                    *(Video Title, [start_time – end_time min])*
-                    4. If the question cannot be answered from the given videos, reply exactly:
-                    "I'm sorry, I can only answer questions based on the provided video content."
-                    5. Be specific, detailed, and explain concepts in your own words (no verbatim transcript copying).
-                    6. If multiple videos cover the topic, synthesize insights from all and clearly mention which video supports which part.
-                    7. Structure your answer as follows:
-                    - **Intro:** Short summary of what the video(s) explain about the topic.
-                    - **Main Explanation:** Bullet points or short paragraphs with timestamps and examples.
-                    - **Conclusion:** One or two lines summarizing the takeaway.
-                    
-                    Example format:
-                    **Video Title:** How Companies Fool You! | Jaago Grahak Jaago  
-                    **Video URL:** https://www.youtube.com/watch?v=DskRAuw8vxk  
+                    <strong>Main Explanation:</strong>
+                    <ul>
+                    <li><strong>[Topic 1]:</strong> Explanation here <a href="[video_url]&t=[start_time_in_seconds]s" target="_blank">[start – end min]</a></li>
+                    <li><strong>[Topic 2]:</strong> Explanation here <a href="[video_url]&t=[start_time_in_seconds]s" target="_blank">[start – end min]</a></li>
+                    <li><strong>[Topic 3]:</strong> Explanation here <a href="[video_url]&t=[start_time_in_seconds]s" target="_blank">[start – end min]</a></li>
+                    </ul>
 
-                    **Answer:**  
-                    Companies use several deceptive pricing methods to fool customers.  
-                    - **Drip Pricing:** Customers see a low price initially, but hidden charges are added later *(How Companies Fool You!, [18.56 – 19.52 min])*.  
-                    - **Bait and Switch:** Attractive deals lure customers, then they're offered higher-margin alternatives *(How Companies Fool You!, [19.44 – 20.38 min])*.  
-                    - **Razor & Blade Model:** The main product is cheap, but refills or parts are expensive *(How Companies Fool You!, [11.10 – 11.62 min])*.  
+                    <strong>Conclusion:</strong>
+                    <p>[Summary sentence] <a href="[video_url]&t=[start_time_in_seconds]s" target="_blank">[start – end min]</a></p>
 
-                    **Conclusion:**  
-                    The video highlights that these tactics are used systematically, and consumers must stay alert *(How Companies Fool You!, [21.21 – 21.74 min])*.                                                    
-                                                                                """
+                    RULES:
+                    1. Use ONLY information from provided transcripts
+                    2. Start response with video title and clickable URL
+                    3. Make timestamps CLICKABLE: <a href="[video_url]&t=[start_time_in_seconds]s" target="_blank">[start – end min]</a>
+                    4. Convert minutes to seconds for URL (multiply by 60)
+                    5. Use HTML tags: <strong>, <p>, <ul>, <li>, <a>, <br>
+                    6. Make ALL URLs clickable with target="_blank"
+                    7. If multiple videos used, list each video title/URL at the start
+                    8. Be detailed and specific
+                    9. If question can't be answered: "I can only answer based on the provided video content."
+
+                    EXAMPLE OUTPUT:  (IT IS JUST AN EXAMPLE, DO NOT REPEAT IT , IN THE ACTUAL ANSWER , YOU HAVE TO ANSWER BASED ON THE CONTEXT PROVIDED)
+                    <strong>Video Title:</strong> How Companies Fool You<br>
+                    <strong>Video URL:</strong> <a href="https://www.youtube.com/watch?v=DskRAuw8vxk" target="_blank">https://www.youtube.com/watch?v=DskRAuw8vxk</a>
+
+                    <p>Companies use several deceptive pricing methods to manipulate customers.</p>
+
+                    <strong>Main Explanation:</strong>
+                    <ul>
+                    <li><strong>Drip Pricing:</strong> Initial low prices hide additional charges revealed later <a href="https://www.youtube.com/watch?v=DskRAuw8vxk&t=1114s" target="_blank">[18.56 – 19.52 min]</a></li>
+                    <li><strong>Bait and Switch:</strong> Advertised deals lure customers to buy different higher-margin products <a href="https://www.youtube.com/watch?v=DskRAuw8vxk&t=1166s" target="_blank">[19.44 – 20.38 min]</a></li>
+                    <li><strong>Razor & Blade Model:</strong> Cheap primary products create dependency on expensive refills <a href="https://www.youtube.com/watch?v=DskRAuw8vxk&t=666s" target="_blank">[11.10 – 11.62 min]</a></li>
+                    </ul>
+
+                    <strong>Conclusion:</strong>
+                    <p>These tactics are used systematically across industries, requiring consumer awareness <a href="https://www.youtube.com/watch?v=DskRAuw8vxk&t=1273s" target="_blank">[21.21 – 21.74 min]</a></p>"""
+                                    
+                                                                                
                 },
                 {
                     "role": "user",
