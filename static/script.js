@@ -1,32 +1,37 @@
+// ===============================
 // DOM Elements
+// ===============================
 const messagesContainer = document.getElementById('messagesContainer');
-const welcomeScreen = document.getElementById('welcomeScreen');
 const userInput = document.getElementById('userInput');
 const sendBtn = document.getElementById('sendBtn');
 const newChatBtn = document.getElementById('newChatBtn');
 const chatHistoryContainer = document.querySelector('.chat-history');
 
-// State
+// ===============================
+// State Management
+// ===============================
 let isProcessing = false;
-let chats = []; // Store all chats
+let chats = [];
 let currentChatId = null;
 
-// Initialize
+// ===============================
+// Initialization
+// ===============================
 document.addEventListener('DOMContentLoaded', () => {
     loadChatsFromStorage();
     setupEventListeners();
     autoResizeTextarea();
-    
-    // Create initial chat if no chats exist
+
     if (chats.length === 0) {
         createNewChat();
     } else {
-        // Load the most recent chat
         loadChat(chats[0].id);
     }
 });
 
-// Load chats from localStorage
+// ===============================
+// Storage Functions
+// ===============================
 function loadChatsFromStorage() {
     const stored = localStorage.getItem('ragrathee_chats');
     if (stored) {
@@ -34,12 +39,13 @@ function loadChatsFromStorage() {
     }
 }
 
-// Save chats to localStorage
 function saveChatsToStorage() {
     localStorage.setItem('ragrathee_chats', JSON.stringify(chats));
 }
 
-// Create new chat
+// ===============================
+// Chat Management
+// ===============================
 function createNewChat() {
     const newChat = {
         id: Date.now().toString(),
@@ -47,150 +53,245 @@ function createNewChat() {
         messages: [],
         createdAt: new Date().toISOString()
     };
-    
-    chats.unshift(newChat); // Add to beginning
+
+    chats.unshift(newChat);
     currentChatId = newChat.id;
     saveChatsToStorage();
     renderChatHistory();
     clearMessages();
 }
 
-// Update chat title based on first message
+function loadChat(chatId) {
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) return;
+
+    currentChatId = chatId;
+    clearMessages();
+
+    chat.messages.forEach(msg => {
+        addMessage(msg.message, msg.role, msg.sources, false);
+    });
+
+    renderChatHistory();
+}
+
 function updateChatTitle(chatId, firstMessage) {
     const chat = chats.find(c => c.id === chatId);
     if (chat && chat.title === 'New Chat') {
-        // Use first 30 characters of the message as title
         chat.title = firstMessage.substring(0, 30) + (firstMessage.length > 30 ? '...' : '');
         saveChatsToStorage();
         renderChatHistory();
     }
 }
 
-// Save message to current chat
+function renameChat(chatId, newName) {
+    const chat = chats.find(c => c.id === chatId);
+    if (chat) {
+        chat.title = newName;
+        saveChatsToStorage();
+        renderChatHistory();
+    }
+}
+
+function deleteChat(chatId) {
+    chats = chats.filter(c => c.id !== chatId);
+    saveChatsToStorage();
+    
+    if (currentChatId === chatId) {
+        if (chats.length > 0) {
+            loadChat(chats[0].id);
+        } else {
+            createNewChat();
+        }
+    } else {
+        renderChatHistory();
+    }
+}
+
 function saveMessageToChat(message, role, sources = null) {
     const chat = chats.find(c => c.id === currentChatId);
     if (chat) {
-        chat.messages.push({ message, role, sources, timestamp: new Date().toISOString() });
-        
-        // Update title if it's the first user message
+        chat.messages.push({ 
+            message, 
+            role, 
+            sources, 
+            timestamp: new Date().toISOString() 
+        });
+
         if (role === 'user' && chat.messages.filter(m => m.role === 'user').length === 1) {
             updateChatTitle(currentChatId, message);
         }
-        
+
         saveChatsToStorage();
     }
 }
 
-// Load chat by ID
-function loadChat(chatId) {
-    const chat = chats.find(c => c.id === chatId);
-    if (!chat) return;
-    
-    currentChatId = chatId;
-    clearMessages();
-    
-    // Render all messages from this chat
-    chat.messages.forEach(msg => {
-        addMessage(msg.message, msg.role, msg.sources, false); // false = don't save again
-    });
-    
-    renderChatHistory();
-}
-
-// Render chat history in sidebar
-function renderChatHistory() {
-    chatHistoryContainer.innerHTML = '';
-    
-    chats.forEach(chat => {
-        const historyItem = document.createElement('div');
-        historyItem.className = 'history-item' + (chat.id === currentChatId ? ' active' : '');
-        historyItem.innerHTML = `
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            </svg>
-            <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${chat.title}</span>
-        `;
-        
-        historyItem.addEventListener('click', () => {
-            loadChat(chat.id);
-        });
-        
-        chatHistoryContainer.appendChild(historyItem);
-    });
-}
-
-// Clear messages container
 function clearMessages() {
     messagesContainer.innerHTML = '';
     showWelcomeScreen();
 }
 
-// Show welcome screen
+// ===============================
+// Chat History Rendering
+// ===============================
+function renderChatHistory() {
+    chatHistoryContainer.innerHTML = '';
+
+    chats.forEach(chat => {
+        const historyItem = document.createElement('div');
+        historyItem.className = 'history-item' + (chat.id === currentChatId ? ' active' : '');
+        historyItem.dataset.id = chat.id;
+
+        historyItem.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <span class="chat-title">${chat.title}</span>
+            
+            <div class="menu-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="5" r="1.5"></circle>
+                    <circle cx="12" cy="12" r="1.5"></circle>
+                    <circle cx="12" cy="19" r="1.5"></circle>
+                </svg>
+            </div>
+            <div class="menu-popup hidden">
+                <div class="menu-item rename">✏️ Rename</div>
+                <div class="menu-item share">🔗 Share</div>
+                <div class="menu-item delete">🗑️ Delete</div>
+            </div>
+        `;
+
+        historyItem.addEventListener('click', (e) => {
+            if (!e.target.closest('.menu-btn') && !e.target.closest('.menu-popup')) {
+                loadChat(chat.id);
+            }
+        });
+
+        chatHistoryContainer.appendChild(historyItem);
+    });
+
+    setupMenuListeners();
+}
+
+// ===============================
+// Menu System
+// ===============================
+function setupMenuListeners() {
+    // Toggle menu
+    document.querySelectorAll('.menu-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeAllMenus();
+            const popup = btn.nextElementSibling;
+            popup.classList.toggle('hidden');
+        });
+    });
+
+    // Rename functionality
+    document.querySelectorAll('.menu-item.rename').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const chatEl = item.closest('.history-item');
+            const chatId = chatEl.dataset.id;
+            const titleEl = chatEl.querySelector('.chat-title');
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = titleEl.textContent;
+            input.className = 'rename-input';
+            titleEl.replaceWith(input);
+            input.focus();
+            input.select();
+
+            const saveName = () => {
+                const newName = input.value.trim() || 'Untitled Chat';
+                renameChat(chatId, newName);
+            };
+
+            input.addEventListener('keydown', e => {
+                if (e.key === 'Enter') saveName();
+                if (e.key === 'Escape') renderChatHistory();
+            });
+            input.addEventListener('blur', saveName);
+            
+            closeAllMenus();
+        });
+    });
+
+    // Delete functionality (no confirmation)
+    document.querySelectorAll('.menu-item.delete').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const chatId = item.closest('.history-item').dataset.id;
+            deleteChat(chatId);
+            closeAllMenus();
+        });
+    });
+
+    // Share functionality
+    document.querySelectorAll('.menu-item.share').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const chatId = item.closest('.history-item').dataset.id;
+            const shareUrl = `${window.location.origin}/chat?id=${chatId}`;
+            
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                showToast("🔗 Link copied!");
+            }).catch(() => {
+                showToast("❌ Failed to copy link");
+            });
+            
+            closeAllMenus();
+        });
+    });
+
+    document.addEventListener('click', closeAllMenus);
+}
+
+function closeAllMenus() {
+    document.querySelectorAll('.menu-popup').forEach(popup => {
+        popup.classList.add('hidden');
+    });
+}
+
+// ===============================
+// Welcome Screen
+// ===============================
 function showWelcomeScreen() {
     const welcomeHTML = `
         <div class="welcome-screen" id="welcomeScreen">
             <div class="welcome-content">
                 <h2>Welcome to RAGRathee</h2>
                 <p>Ask questions about Dhruv Rathee's video content</p>
-                
+
                 <div class="example-prompts">
                     <div class="example-card" data-prompt="How do companies fool customers?">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                        </svg>
-                        <span>How do companies fool customers?</span>
+                        How do companies fool customers?
                     </div>
                     <div class="example-card" data-prompt="Who is the oldest human?">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
-                        <span>Who is the oldest human?</span>
+                        Who is the oldest human?
                     </div>
                     <div class="example-card" data-prompt="Tell me about shrinkflation">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                        </svg>
-                        <span>Tell me about shrinkflation</span>
+                        Tell me about shrinkflation
                     </div>
                     <div class="example-card" data-prompt="What is planned obsolescence?">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                            <path d="M16 3v4M8 3v4M2 11h20"></path>
-                        </svg>
-                        <span>What is planned obsolescence?</span>
+                        What is planned obsolescence?
                     </div>
                 </div>
             </div>
         </div>
     `;
-    
     messagesContainer.innerHTML = welcomeHTML;
     attachExampleCardListeners();
 }
 
-// Attach listeners to example cards
-function attachExampleCardListeners() {
-    const exampleCards = document.querySelectorAll('.example-card');
-    exampleCards.forEach(card => {
-        card.addEventListener('click', () => {
-            const prompt = card.getAttribute('data-prompt');
-            userInput.value = prompt;
-            userInput.focus();
-            sendBtn.disabled = false;
-            handleSendMessage();
-        });
-    });
-}
-
+// ===============================
 // Event Listeners
+// ===============================
 function setupEventListeners() {
-    // Send button click
     sendBtn.addEventListener('click', handleSendMessage);
 
-    // Enter key to send (Shift+Enter for new line)
     userInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -198,60 +299,50 @@ function setupEventListeners() {
         }
     });
 
-    // Auto-resize textarea
-    userInput.addEventListener('input', autoResizeTextarea);
-
-    // Enable/disable send button based on input
     userInput.addEventListener('input', () => {
         sendBtn.disabled = !userInput.value.trim() || isProcessing;
+        autoResizeTextarea();
     });
 
-    // New chat button
-    newChatBtn.addEventListener('click', () => {
-        createNewChat();
-    });
-    
-    // Initial example cards
+    newChatBtn.addEventListener('click', createNewChat);
     attachExampleCardListeners();
 }
 
-// Auto-resize textarea
-function autoResizeTextarea() {
-    userInput.style.height = 'auto';
-    userInput.style.height = Math.min(userInput.scrollHeight, 200) + 'px';
+function attachExampleCardListeners() {
+    document.querySelectorAll('.example-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const prompt = card.getAttribute('data-prompt');
+            userInput.value = prompt;
+            sendBtn.disabled = false;
+            handleSendMessage();
+        });
+    });
 }
 
-// Handle send message
+// ===============================
+// Message Handling
+// ===============================
 async function handleSendMessage() {
     const message = userInput.value.trim();
-    
     if (!message || isProcessing) return;
 
-    // Hide welcome screen
     const welcomeElement = document.getElementById('welcomeScreen');
     if (welcomeElement) {
         welcomeElement.style.display = 'none';
     }
 
-    // Add user message to UI
     addMessage(message, 'user');
-
-    // Clear input
     userInput.value = '';
     userInput.style.height = 'auto';
     sendBtn.disabled = true;
     isProcessing = true;
 
-    // Show loading indicator
     const loadingId = addLoadingMessage();
 
     try {
-        // Send to backend
         const response = await fetch('/query', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ question: message })
         });
 
@@ -260,11 +351,7 @@ async function handleSendMessage() {
         }
 
         const data = await response.json();
-
-        // Remove loading indicator
         removeLoadingMessage(loadingId);
-
-        // Add assistant response
         addMessage(data.answer, 'assistant', data.sources);
 
     } catch (error) {
@@ -277,7 +364,9 @@ async function handleSendMessage() {
     }
 }
 
-// Add message to UI
+// ===============================
+// Message Display
+// ===============================
 function addMessage(text, role, sources = null, shouldSave = true) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${role}`;
@@ -291,97 +380,72 @@ function addMessage(text, role, sources = null, shouldSave = true) {
 
     const messageText = document.createElement('div');
     messageText.className = 'message-text';
-    
-    if (role === 'assistant') {
-        messageText.innerHTML = text;  // Renders HTML for assistant
-    } else {
-        messageText.textContent = text;  // Plain text for user (security)
-    }
+    messageText.innerHTML = role === 'assistant' ? text : text.replace(/</g, '&lt;');
 
     content.appendChild(messageText);
 
-    // Add citations if available
-    if (sources && sources.length > 0) {
-        const citationsDiv = document.createElement('div');
-        citationsDiv.className = 'citations';
-        
-        sources.forEach(source => {
-            const citationItem = document.createElement('div');
-            citationItem.className = 'citation-item';
-            
-            const citationTitle = document.createElement('div');
-            citationTitle.className = 'citation-title';
-            citationTitle.innerHTML = `📹 <a href="${source.video_url}" target="_blank" class="citation-link">${source.video_title}</a>`;
-            
-            const citationTime = document.createElement('div');
-            citationTime.className = 'citation-time';
-            const startSeconds = Math.floor(source.start_time * 60);
-            const videoWithTime = `${source.video_url}${source.video_url.includes('?') ? '&' : '?'}t=${startSeconds}s`;
-            citationTime.innerHTML = `⏱️ <a href="${videoWithTime}" target="_blank" class="timestamp-link">${source.start_time.toFixed(2)} - ${source.end_time.toFixed(2)} min</a>`;
-            
-            citationItem.appendChild(citationTitle);
-            citationItem.appendChild(citationTime);
-            citationsDiv.appendChild(citationItem);
-        });
-        
-        content.appendChild(citationsDiv);
-    }
+    // Sources are already embedded in the message text as clickable links
+    // No need to display them separately
 
     messageDiv.appendChild(avatar);
     messageDiv.appendChild(content);
     messagesContainer.appendChild(messageDiv);
 
-    // Save to chat history
     if (shouldSave) {
         saveMessageToChat(text, role, sources);
     }
-
-    // Scroll to bottom
+    
     scrollToBottom();
 }
 
-// Add loading message
 function addLoadingMessage() {
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message assistant';
     messageDiv.id = 'loading-message';
-
-    const avatar = document.createElement('div');
-    avatar.className = 'message-avatar';
-    avatar.textContent = 'AI';
-
-    const content = document.createElement('div');
-    content.className = 'message-content';
-
-    const loading = document.createElement('div');
-    loading.className = 'loading';
-    loading.innerHTML = `
-        <span>Thinking</span>
-        <div class="loading-dots">
-            <span></span>
-            <span></span>
-            <span></span>
+    messageDiv.innerHTML = `
+        <div class="message-avatar">AI</div>
+        <div class="message-content">
+            <div class="loading">
+                <span>Thinking</span>
+                <div class="loading-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
         </div>
     `;
-
-    content.appendChild(loading);
-    messageDiv.appendChild(avatar);
-    messageDiv.appendChild(content);
     messagesContainer.appendChild(messageDiv);
-
     scrollToBottom();
     return 'loading-message';
 }
 
-// Remove loading message
 function removeLoadingMessage(id) {
-    const loadingMsg = document.getElementById(id);
-    if (loadingMsg) {
-        loadingMsg.remove();
+    const msg = document.getElementById(id);
+    if (msg) {
+        msg.remove();
     }
 }
 
-// Scroll to bottom
+// ===============================
+// UI Utilities
+// ===============================
+function autoResizeTextarea() {
+    userInput.style.height = 'auto';
+    userInput.style.height = Math.min(userInput.scrollHeight, 200) + 'px';
+}
+
 function scrollToBottom() {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function showToast(message) {
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => toast.classList.add('show'), 10);
+    setTimeout(() => toast.classList.remove('show'), 2500);
+    setTimeout(() => toast.remove(), 3000);
 }
