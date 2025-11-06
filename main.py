@@ -1,18 +1,33 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify , session, redirect, url_for
 from sklearn.metrics.pairwise import cosine_similarity
-from read_chunks import model  
+from transcripts_json_YT_Transcript.read_chunks import model  
+from authlib.integrations.flask_client import OAuth 
+from dotenv import load_dotenv
+from functools import wraps
 import pandas as pd
 import numpy as np
 import joblib
 import groq
 import os
-from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "supersecretkey")
+
+#intialize OAuth
+oauth = OAuth(app)
+google = oauth.register(
+    name='google',
+    client_id=os.getenv("GOOGLE_CLIENT_ID"),
+    client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    client_kwargs={
+        'scope': 'openid email profile'
+    }
+)
 
 # Initialize Groq client
 api_key = os.getenv("GROQ_API_KEY")
@@ -26,6 +41,16 @@ df = joblib.load('embeddings.joblib')
 # print(f" Loaded {len(df)} chunks from {df['video_title'].nunique()} videos\n")
 
 # CORE FUNCTIONS
+user_chats = {}  # In-memory storage for user chats
+
+# Login required decorator
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user' not in session:
+            return jsonify({'error': 'Authentication required', 'redirect': '/login'}), 401
+        return f(*args, **kwargs)
+    return decorated_function
 
 def create_embeddings(text_list, model):
     """Create embeddings for a list of texts."""
@@ -107,11 +132,11 @@ def query_groq(question, context):
     <p>These deceptive tactics are used systematically across industries, making consumer awareness and vigilance essential for protecting yourself from manipulation.</p>
 
     WHAT NOT TO DO:
-    ❌ Do not add a separate list of timestamps after conclusion
-    ❌ Do not repeat video titles at the end
-    ❌ Do not use markdown syntax (**, ##, etc.)
-    ❌ Do not add citations outside of bullet points
-    ❌ Do not end with "📹 Video Title ⏱️ timestamp" format"""
+     Do not add a separate list of timestamps after conclusion
+     Do not repeat video titles at the end
+     Do not use markdown syntax (**, ##, etc.)
+     Do not add citations outside of bullet points
+     Do not end with "📹 Video Title ⏱️ timestamp" format"""
                 },
                 {
                     "role": "user",
@@ -193,7 +218,59 @@ def process_question(question, top_results=7, verbose=False):
     
     return answer, sources
 
+# Helper functions for user chat management
+def get_user_chats(user_email):
+    """Get chats for a specific user."""
+    if user_email not in user_chats:
+        user_chats[user_email] = []
+    return user_chats[user_email]
+
+def save_user_chats(user_email, chats):
+    """Save chats for a specific user."""
+    user_chats[user_email] = chats
+
+#Authetication Route
+@app.route('/login')
+def login():
+    """Redirect to Google OAuth login."""
+    redirect_uri = url_for('authorize', _external=True)
+    return google.authorize_redirect(redirect_uri)
+
+@app.route('/authorize')
+def authorize():
+    """Handle OAuth callback."""
+    try:
+        token = google.authorize_access_token()
+        user_info = token.get('userinfo')
+        
+        if user_info:
+            session['user'] = {
+                'email': user_info['email'],
+                'name': user_info.get('name', 'User'),
+                'picture': user_info.get('picture', '')
+            }
+            return redirect('/')
+        else:
+            return redirect('/login')
+    except Exception as e:
+        print(f"OAuth error: {str(e)}")
+        return redirect('/login')
+
+@app.route('/logout')
+def logout():
+    """Logout user."""
+    session.pop('user', None)
+    return redirect('/')
+
+@app.route('/api/user')
+def get_user():
+    """Get current user info."""
+    if 'user' in session:
+        return jsonify(session['user'])
+    return jsonify(None)
+
 # FLASK ROUTES
+
 @app.route('/')
 def index():
     """Render the main page."""
@@ -233,6 +310,18 @@ def query_endpoint():
         print(f"Error in /query: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+app.route('/chats', methods=['POST'])
+@login_required
+def save_chats():
+    """Save chats for the current user."""
+    try:
+        user_email = session['user']['email']
+        chats = request.get_json()
+        save_user_chats(user_email, chats)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/stats', methods=['GET'])
 def stats():
     """Get statistics about the database."""
@@ -247,79 +336,8 @@ def stats():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# CLI MODE
-
-def run_cli():
-    """Run in command-line interface mode."""
-    print("\n" + "="*80)
-    print("📺 RAG Video Q&A System - CLI Mode")
-    print("="*80)
-    print(f"📊 Loaded {len(df)} chunks from {df['video_title'].nunique()} videos")
-    print("Type 'exit' or 'quit' to stop\n")
-    
-    while True:
-        try:
-            question = input("\n❓ Ask a question: ").strip()
-            
-            if question.lower() in ['exit', 'quit', 'q']:
-                print("\n👋 Goodbye!")
-                break
-            
-            if not question:
-                print(" Please enter a valid question!")
-                continue
-            
-            # Process the question
-            answer, sources = process_question(question, verbose=True)
-            
-            if answer is None:
-                print(f"{sources}")
-                continue
-            
-            # Display answer
-            # print("\n" + "="*80)
-            # print("💡 ANSWER:")
-            # print("="*80)
-            # print(answer)
-            # print("="*80)
-            
-            # Optionally save debug info
-            save = input("\n💾 Save prompt to file? (y/n): ").strip().lower()
-            if save == 'y':
-                context = format_context(df.iloc[[s['chunk_id'] for s in sources]])
-                debug_prompt = f"""Question: {question}
-
-Context:
-{context}
-
-Answer:
-{answer}
-"""
-                
-        except KeyboardInterrupt:
-            print("\n\n👋 Goodbye!")
-            break
-        except Exception as e:
-            print(f"❌ Error: {str(e)}")
 
 # MAIN ENTRY POINT
-
 if __name__ == '__main__':
-    import sys
-    
-    # Check command line arguments
-    if len(sys.argv) > 1:
-        if sys.argv[1] == '--cli':
-            # Run in CLI mode
-            run_cli()
-        elif sys.argv[1] == '--help':
-            print("Usage: python main.py [--cli | --help]")
-            print("  --cli    Run in command-line interface mode")
-            print("  --help   Show this help message")
-
-        else:
-            print(f"Unknown option: {sys.argv[1]}")
-            print("Use --help for usage information")
-    else:
-        # Default: Run Flask server
+        # Run the Flask app
         app.run(debug=True, host='0.0.0.0', port=5000)
