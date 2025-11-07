@@ -160,7 +160,6 @@ def query_groq(question, context):
 def process_question(question, top_results=7, verbose=False):
     """
     Process a question and return answer with sources.
-    This function can be used by both CLI and API endpoints.
     """
     if not question.strip():
         return None, "Please enter a valid question!"
@@ -234,6 +233,7 @@ def save_user_chats(user_email, chats):
 def login():
     """Redirect to Google OAuth login."""
     redirect_uri = url_for('authorize', _external=True)
+    print(f"Redirect URL: {redirect_uri}")
     return google.authorize_redirect(redirect_uri)
 
 @app.route('/authorize')
@@ -259,7 +259,7 @@ def authorize():
 @app.route('/logout')
 def logout():
     """Logout user."""
-    session.pop('user', None)
+    session.clear()
     return redirect('/')
 
 @app.route('/api/user')
@@ -310,7 +310,7 @@ def query_endpoint():
         print(f"Error in /query: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-app.route('/chats', methods=['POST'])
+@app.route('/chats', methods=['POST'])
 @login_required
 def save_chats():
     """Save chats for the current user."""
@@ -319,6 +319,17 @@ def save_chats():
         chats = request.get_json()
         save_user_chats(user_email, chats)
         return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/chats', methods=['GET'])
+@login_required
+def get_chats():
+    """Get chats for the current user."""
+    try:
+        user_email = session['user']['email']
+        chats = get_user_chats(user_email)
+        return jsonify(chats)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
