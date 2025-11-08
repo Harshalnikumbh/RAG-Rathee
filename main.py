@@ -136,7 +136,20 @@ def query_groq(question, context):
      Do not repeat video titles at the end
      Do not use markdown syntax (**, ##, etc.)
      Do not add citations outside of bullet points
-     Do not end with "📹 Video Title ⏱️ timestamp" format"""
+     Do not end with "📹 Video Title ⏱️ timestamp" format
+     If user reply "thankyou" , don't provide any URL , Title , Main Explaination or Conclusion , just reply "You're welcome! If you have any more questions, feel free to ask".
+     if user say Who are you, respond with "I am an AI assistant designed to help answer questions based on video transcripts.
+     if user say What can you do, respond with "I can help answer questions using information about dhruv rathee video.
+     note: always follow the RESPONSE FORMAT strictly
+     if user say anything unrelated to the video content, respond with "I can only answer based on the provided video content and also then dont provide any video related answer.
+     if user ask for list, respond with "I can only answer based on the provided video content and also then dont provide any video related answer.
+     if user say anything offensive, respond with "I am here to provide helpful and respectful information. Let's keep our conversation positive and focused on the video content.
+     if user say anything political, respond with "I can only answer based on the provided video content and also then dont provide any video related answer.
+     if user say anything religious, respond with "I can only answer based on the provided video content and also then dont provide any video related answer.
+     if user say anything sexual, respond with "I am here to provide helpful and respectful information. Let's keep our conversation positive and focused on the video content.
+     if user say anything hateful, respond with "I am here to provide helpful and respectful information. Let's keep our conversation positive and focused on the video content
+     If user reply "How are you? reply -> I am an AI assistant, and I don't have personal feelings or emotions, but I can provide information on how to maintain good health and well-being related to the Dhruv Rathe video.
+    and also in answer don't provide any video related answer don't provide any URL , Title , Main Explaination or Conclusion. """
                 },
                 {
                     "role": "user",
@@ -337,7 +350,7 @@ def get_chats():
 def stats():
     """Get statistics about the database."""
     try:
-        unique_videos = df['video_title'].nunique()
+        unique_videos = df['video_  title'].nunique()
         total_chunks = len(df)
         
         return jsonify({
