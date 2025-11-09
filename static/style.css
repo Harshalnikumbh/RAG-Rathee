@@ -115,6 +115,11 @@ body {
     margin-bottom: 12px;
     color: var(--text-primary);
     padding: 8px;
+    white-space: nowrap;
+    overflow: visible;  
+    width: 100%;
+    text-overflow: clip;
+    max-width: 120px;
 }
 
 .new-chat-btn {
@@ -138,7 +143,7 @@ body {
 
 .new-chat-btn:disabled {
     opacity: 0.5;
-    cursor: not-allowed;
+    cursor: not-allowed;        
 }
 
 /* ===============================
@@ -388,6 +393,7 @@ body {
     align-items: center;
     justify-content: center;
     height: 100%;
+    padding: 80px 16px 100px 16px;
 }
 
 .welcome-content {
@@ -689,22 +695,169 @@ body {
 }
 
 /* ===============================
-   Responsive Design
+   Mobile Sidebar Toggle
+   =============================== */
+.sidebar-toggle {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    width: 40px;
+    height: 40px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 101; /* Must be higher than overlay */
+    transition: all 0.2s;
+}
+
+.sidebar-toggle:hover {
+    background: var(--bg-tertiary);
+}
+
+.sidebar-toggle svg {
+    color: var(--text-primary);
+}
+
+/* Sidebar overlay for mobile */
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: none;
+    z-index: 999; /* Lower than toggle and sidebar */
+    animation: fadeInOverlay 0.2s ease-out;
+}
+
+.sidebar-overlay.active {
+    display: block;
+}
+
+@keyframes fadeInOverlay {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* ===============================
+   Responsive Design (Updated)
    =============================== */
 @media (max-width: 768px) {
+    .app-container {
+        position: relative;
+    }
+
     .sidebar {
-        display: none;
+        position: fixed;
+        left: -300px; /* Increased from -280px */
+        top: 0;
+        height: 100vh;
+        z-index: 1000;
+        transition: left 0.3s ease-out;
+        box-shadow: 2px 0 12px rgba(0, 0, 0, 0.5);
+        width: 280px; /* Increased from 260px */
+        display: flex;
+        overflow-x: visible; /* ADD THIS to prevent cutting */
+    }
+
+    .sidebar.active {
+        left: 0;
+    }
+
+    .sidebar-header {
+        width: 100%;
+        overflow: visible; /* ADD THIS */
+    }
+
+    .logo {
+        font-size: 18px;
+        width: 100%;
+        min-width: 150px; /* ADD THIS */
+    }
+
+    .sidebar-toggle {
+        display: flex;
+        z-index: 1001;
+    }
+
+    .sidebar-overlay {
+        z-index: 999;
+    }
+
+    .main-content {
+        width: 100%;
+        z-index: 1;
+    }
+
+    .welcome-screen {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        padding: 80px 16px 100px 16px;
+    }
+
+    .welcome-content {
+        padding: 0 16px;
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .welcome-content h2 {
+        font-size: 28px;
+        margin-bottom: 12px;
+    }
+
+    .welcome-content p {
+        font-size: 15px;
+        margin-bottom: 24px;
     }
 
     .example-prompts {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .example-card {
+        padding: 16px;
+        font-size: 13px;
+        min-height: 80px;
+        display: flex;
+        align-items: center;
+        flex-direction: column; /* ADD THIS - stack icon and text */
+        text-align: center; /* ADD THIS */
+        gap: 8px; /* ADD THIS - space between icon and text */
+    }
+
+    .example-card svg {
+        flex-shrink: 0; /* ADD THIS - prevent icon from shrinking */
+    }
+
+    .example-card span {
+        display: block; /* ADD THIS */
+        width: 100%; /* ADD THIS */
     }
 
     .messages-container {
         padding: 16px;
+        padding-top: 70px;
+        padding-bottom: 0;
     }
 
     .input-container {
         padding: 16px;
+    }
+    
+    .chat-container {
+        padding-left: 0;
     }
 }
