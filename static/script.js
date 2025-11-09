@@ -16,9 +16,54 @@ let currentChatId = null;
 let currentUser = null;
 
 // ===============================
+// Mobile Sidebar Toggle (MOVED TO TOP)
+// ===============================
+function setupMobileSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+    console.log('Sidebar:', sidebar); // Debug
+    console.log('Toggle:', sidebarToggle); // Debug
+    console.log('Overlay:', sidebarOverlay); // Debug
+
+    if (!sidebarToggle || !sidebarOverlay || !sidebar) {
+        console.error('Sidebar elements not found!');
+        return;
+    }
+
+    // Toggle sidebar
+    sidebarToggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Toggle clicked!'); // Debug
+        sidebar.classList.toggle('active');
+        sidebarOverlay.classList.toggle('active');
+    });
+
+    // Close sidebar when overlay is clicked
+    sidebarOverlay.addEventListener('click', (e) => {
+        e.preventDefault();
+        console.log('Overlay clicked!'); // Debug
+        sidebar.classList.remove('active');
+        sidebarOverlay.classList.remove('active');
+    });
+
+    // Close sidebar when a chat is selected (mobile only)
+    document.addEventListener('click', (e) => {
+        if (window.innerWidth <= 768 && e.target.closest('.history-item')) {
+            sidebar.classList.remove('active');
+            sidebarOverlay.classList.remove('active');
+        }
+    });
+}
+
+// ===============================
 // Initialization
 // ===============================
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log("DOM fully loaded and parsed"); 
+    setupMobileSidebar();
     await checkAuthStatus();
     setupEventListeners();
     autoResizeTextarea();
