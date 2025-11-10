@@ -364,7 +364,7 @@ def stats():
 # MAIN ENTRY POINT
 if __name__ == '__main__':
         # Run the Flask app
-        # app.run(debug=True, host='0.0.0.0', port=5000)
-        import os 
-        port = int(os.environ.get("PORT", 7860))
-        app.run(host='0.0.0.0', port=port, debug=False)
+        app.run(debug=True, host='0.0.0.0', port=5000)
+        # import os 
+        # port = int(os.environ.get("PORT", 7860))
+        # app.run(host='0.0.0.0', port=port, debug=False)
