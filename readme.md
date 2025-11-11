@@ -105,14 +105,6 @@ GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 GROQ_API_KEY=your-groq-api-key
 ```
-
----
-
-## 📸 Screenshots
-
-<!-- Add screenshots here when ready -->
-Coming soon...
-
 ---
 
 ## 🔑 Key Components
@@ -170,6 +162,8 @@ Contributions are welcome! Feel free to open issues or submit pull requests.
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
+##  Demo Link 
+Link : https://youtu.be/p00gPVde7K0?si=umn4MQhWJ3SejRA8
 
 ## 🙏 Acknowledgments
 
